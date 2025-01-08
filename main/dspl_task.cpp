@@ -18,7 +18,7 @@
 #include "literals.h"
 #include "utils.h"
 
-DisplayTask::DisplayTask()
+DisplayTask::DisplayTask() : _consumption("cons"), _photovoltaic("pv"), _sdcard("/sdcard", HW_SD_MOSI, HW_SD_MISO, HW_SD_CLK, HW_SD_CS)
 {
     _queue = xQueueCreate(5, sizeof(DisplayTask::ReqData));
     _queueData = xQueueCreate(5, sizeof(SolaxParameters));
@@ -40,7 +40,15 @@ DisplayTask::~DisplayTask()
 
 void DisplayTask::loop()
 {
+    bool mountOK = false;
+    bool loadAfterReset = true;
+    int lastMin = 0;
+  
+    mountOK = (_sdcard.mount(true) == ESP_OK);
+    if (!mountOK) ESP_LOGE(TAG, "SD card mount failed - memory mode");
+    else  ESP_LOGW(TAG, "SD card mode active");
 
+     
     // display adjust & show initial screen
     _dd.rotation(LV_DISP_ROT_NONE);
     _dd.lock();
@@ -94,18 +102,58 @@ void DisplayTask::loop()
             _dashboard.updateOverview(inverterTotal, _SolaxData.Temperature);
             _dashboard.updateEnergyBar(freeEnergy);
 
+            // ---> valid time 
             if (_connectionManager && _connectionManager->isTimeActive())
             {
-                _consumption.update(consumption);
-                _photovoltaic.update(photovoltaic);
 
-                auto hour = Utils::getCurrentHour();
-                _dashboard.updateDataSetHour(0, hour, _consumption.getConsumptionForHour(hour));
-                _dashboard.updateDataSetHour(0, hour, _photovoltaic.getConsumptionForHour(hour));
+                auto [hour, min, sec] = Utils::getTime();
+                if (hour == 0 && min == 0 && lastMin != min) 
+                { // Day reset, 
+                    lastMin = min;
+                    _consumption.resetDailyConsumption();
+                    _photovoltaic.resetDailyConsumption();
+                    auto filename = "/" + Utils::getDayFileName();
+                    _sdcard.deleteFile(filename);
+                    filename += ".pv";
+                    _sdcard.deleteFile(filename);
+                } else { 
 
-                //_consumption.dump();   // TODO: remove
-                //_photovoltaic.dump();  // TODO: remove
-            }
+                    if (mountOK && loadAfterReset) 
+                    {
+                       loadAfterReset = false;
+                        auto filename = "/" + Utils::getDayFileName();
+                        _consumption.load(_sdcard.readFile(filename));
+                        filename += ".pv";
+                        _photovoltaic.load(_sdcard.readFile(filename));
+
+                        _consumption.updateChart([this](int hour, float consumption) { _dashboard.updateDataSetHour(1,hour, consumption);});
+                        _photovoltaic.updateChart([this](int hour, float consumption) { _dashboard.updateDataSetHour(0,hour, consumption);});
+                       
+                    } 
+
+                    _consumption.update(consumption);
+                    _photovoltaic.update(photovoltaic);
+
+                    _dashboard.updateDataSetHour(1, hour, _consumption.getConsumptionForHour(hour));
+                    _dashboard.updateDataSetHour(0, hour, _photovoltaic.getConsumptionForHour(hour));
+
+                    //if (sec == 0 || sec == 20 || sec == 40)
+                    ESP_LOGI(TAG, "TIME %d %d %d", hour, min, sec );
+
+                    if (mountOK && (min % 5 == 0) &&  (lastMin != min)) {
+                        lastMin = min;
+                        auto filename = "/" + Utils::getDayFileName();
+                        if (_sdcard.writeFile(filename, _consumption.save())) {
+                            ESP_LOGI(TAG, "File written successfully %s", filename.c_str() );
+                        }
+                        filename += ".pv";
+                        if (_sdcard.writeFile(filename, _photovoltaic.save())) {
+                             ESP_LOGI(TAG, "File written successfully %s", filename.c_str() );
+                        }
+                    }
+                }
+                
+            } // <--- valid time
 
             _dd.unlock();
         }
@@ -148,6 +196,8 @@ void DisplayTask::loop()
             }
         }
     }
+
+    _sdcard.unmount(); // never umnounted!!!
 }
 
 void DisplayTask::settingMsg(std::string_view msg)

@@ -44,3 +44,11 @@
 #define HW_LCD_DC           GPIO_NUM_0
 #define HW_LCD_WR           GPIO_NUM_47
 #define HW_LCD_RD           GPIO_NUM_NC 
+
+
+
+// SD card 
+#define HW_SD_MOSI          GPIO_NUM_40
+#define HW_SD_MISO          GPIO_NUM_38
+#define HW_SD_CLK           GPIO_NUM_39
+#define HW_SD_CS            GPIO_NUM_41 

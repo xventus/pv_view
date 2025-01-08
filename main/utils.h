@@ -66,4 +66,34 @@ public:
         localtime_r(&now, &localTime);
         return localTime.tm_hour;
     }
+
+    static int getCurrentMinute()
+    {
+        time_t now = time(NULL);
+        struct tm localTime;
+        localtime_r(&now, &localTime);
+        return localTime.tm_min;
+    }
+
+  static std::string getDayFileName()
+{
+    time_t now = time(NULL);
+    struct tm localTime;
+    localtime_r(&now, &localTime);
+
+    char buffer[5]; // DDMM + '\0'
+    strftime(buffer, sizeof(buffer), "%d%m", &localTime);
+
+    return std::string(buffer);
+}
+
+static std::tuple<int, int, int> getTime()
+{
+    time_t now = time(NULL);
+    struct tm localTime;
+    localtime_r(&now, &localTime);
+
+    return {localTime.tm_hour, localTime.tm_min, localTime.tm_sec};
+}
+
 };

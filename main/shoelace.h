@@ -21,13 +21,13 @@ private:
     std::array<float, 24> hourlyConsumption = {0}; // Consumption in each hour (Wh)
     float lastPower = 0;                           // Last power value (W)
     time_t lastUpdateTime = 0;                     // Time of last update
+    std::string instanceId;    
 
 public:
     
     using ChartUpdateCallback = std::function<void(int hour, float consumption)>;
 
-    Shoelace() 
-    {
+    Shoelace(const std::string &id) : instanceId(id) {
         resetDailyConsumption();
     }
 
@@ -81,5 +81,43 @@ public:
         {
             callback(hour, hourlyConsumption[hour]);
         }
+    }
+
+
+    std::string save() {
+        std::ostringstream oss;
+        for (float value : hourlyConsumption) {
+            oss << value << ",";
+        }
+        oss << lastPower << "," << lastUpdateTime;
+        ESP_LOGW(TAG,"Save %s", oss.str().c_str());
+        return oss.str(); 
+    }
+
+    
+    bool load(std::string_view data) {
+       
+        if (data.empty()) 
+        {
+            ESP_LOGW(TAG,"Load  - no data");
+            return false;
+        }
+
+        ESP_LOGW(TAG,"Load %s", data.data());
+
+        std::istringstream iss(data.data());
+        std::string token;
+        for (int i = 0; i < 24 && std::getline(iss, token, ','); ++i) {
+            hourlyConsumption[i] = std::stof(token);
+        }
+
+        if (std::getline(iss, token, ',')) {
+            lastPower = std::stof(token);
+        }
+        if (std::getline(iss, token, ',')) {
+            lastUpdateTime = std::stol(token);
+        }
+
+        return true;
     }
 };

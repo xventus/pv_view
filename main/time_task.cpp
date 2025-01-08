@@ -51,6 +51,7 @@ bool  TimeTask::syncTime()
   {
     ESP_LOGW(LOG_TAG, "Time not synchronized. Retrying...");
     Application::getInstance()->getDisplayTask()->settingMsg("Time not synchronized. Retrying...");
+    sntp_restart();
   }
   else if (status == SNTP_SYNC_STATUS_IN_PROGRESS)
   {
@@ -62,7 +63,7 @@ bool  TimeTask::syncTime()
     time_t now = time(NULL);
     struct tm timeinfo;
     localtime_r(&now, &timeinfo);
-    ESP_LOGI(LOG_TAG, "Time synchronized: %s status=%d", asctime(&timeinfo),status);
+    ESP_LOGW(LOG_TAG, "Time synchronized: %s status=%d", asctime(&timeinfo),status);
     Application::getInstance()->getDisplayTask()->settingMsg(asctime(&timeinfo));
     if (_connectionManager)  _connectionManager->setTimeActive();
     rc = true;

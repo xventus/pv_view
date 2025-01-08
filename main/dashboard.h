@@ -57,6 +57,7 @@ private:
 
     lv_obj_t *_chartTitleLabel{nullptr}; // For the chart title label
     lv_obj_t *_chart{nullptr};           // For the chart object
+    lv_obj_t *_maxLabel{nullptr};        // Maximum value for chart
 
     lv_chart_series_t *_chartSeries{nullptr};
     int _currentDataSetIndex{0};
@@ -87,9 +88,8 @@ private:
     };
 
     ChartDataSet _dataSets[2] = {
-        {"Photovoltaic Yield", lv_color_hex(0x007BFF), {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-        {"Energy Consumption", lv_color_hex(0xFF4500), {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
-        };
+        {"Photovoltaic Yield", lv_color_hex(0xFF4500) , {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+        {"Energy Consumption", lv_color_hex(0x007BFF) , {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}};
 
 public:
     void disableSettingsApButton()
@@ -185,6 +185,7 @@ public:
         lv_obj_set_style_bg_opa(_screen, LV_OPA_COVER, 0);             // Full opacity
 
         createFrames();
+        onChartClick();
     }
 
     void createSettingsScreen()
@@ -302,7 +303,7 @@ public:
         addIcon(_gridFrame, &icons8_telephone_pole_48, LV_ALIGN_CENTER, 0, 0);
         _gridLed = lv_led_create(_gridFrame);
         lv_obj_set_size(_gridLed, 5, 5); // Set LED size
-        lv_obj_align(_gridLed, LV_ALIGN_BOTTOM_LEFT, 5, -5); 
+        lv_obj_align(_gridLed, LV_ALIGN_BOTTOM_LEFT, 5, -5);
 
         // Overview
         _overviewFrame = createFrame(130, 110, LV_ALIGN_TOP_MID, 0, 130, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
@@ -315,7 +316,7 @@ public:
         _energyBarLabel = addLabel(_energyBarFrame, "1200 W", LV_ALIGN_TOP_MID, 0, -10, &lv_font_montserrat_14);
         _energyBar = addBar(_energyBarFrame, 270, 20, LV_ALIGN_BOTTOM_MID, 0, -10);
 
-        createBarGraph("24-Hour Energy Usage", lv_color_hex(0x007BFF));
+        createBarGraph("", lv_color_hex(0x007BFF));
 
         enableOverviewClick();
     }
@@ -390,33 +391,30 @@ public:
     }
 
     void updateSolarPanels(int string1Power, int string2Power)
-{
-    char text[20];
-    int totalPower = string1Power + string2Power;
-
-  
-    sprintf(text, "%d W", totalPower);
-    lv_label_set_text(_solarPanelTotalPowerLabel, text);
-
-  
-    sprintf(text, "%d W", string1Power);
-    lv_label_set_text(_solarPanelString1Label, text);
-
-    sprintf(text, "%d W", string2Power);
-    lv_label_set_text(_solarPanelString2Label, text);
-
-    
-    if (totalPower > 100)
     {
-       
-        lv_obj_set_style_border_color(_solarPanelFrame, lv_color_hex(0x00FF00), 0); 
+        char text[20];
+        int totalPower = string1Power + string2Power;
+
+        sprintf(text, "%d W", totalPower);
+        lv_label_set_text(_solarPanelTotalPowerLabel, text);
+
+        sprintf(text, "%d W", string1Power);
+        lv_label_set_text(_solarPanelString1Label, text);
+
+        sprintf(text, "%d W", string2Power);
+        lv_label_set_text(_solarPanelString2Label, text);
+
+        if (totalPower > 100)
+        {
+
+            lv_obj_set_style_border_color(_solarPanelFrame, lv_color_hex(0x00FF00), 0);
+        }
+        else
+        {
+
+            lv_obj_set_style_border_color(_solarPanelFrame, lv_color_hex(0x000000), 0);
+        }
     }
-    else
-    {
-       
-        lv_obj_set_style_border_color(_solarPanelFrame, lv_color_hex(0x000000), 0);
-    }
-}
 
     void updateBattery(int percentage, int power, float temp)
     {
@@ -424,8 +422,7 @@ public:
         sprintf(text, "%d%%", percentage);
         lv_label_set_text(_batteryPercentageLabel, text);
 
-        sprintf(text, "%d W", power);
-        lv_label_set_text(_batteryPowerLabel, text);
+        lv_label_set_text(_batteryPowerLabel, formatPower(power).c_str());
 
         sprintf(text, "%.1f °C", temp);
         lv_label_set_text(_batteryTempLabel, text);
@@ -456,17 +453,17 @@ public:
 
     std::string formatPower(int powr)
     {
-    std::ostringstream oss;
-    if (powr < 1000)
-    {
-        oss << powr << " W";
-    }
-    else
-    {
-        double kilowatts = powr / 1000.0; // Převod na kilowatty
-        oss << std::fixed << std::setprecision(2) << kilowatts << " kW";
-    }
-    return oss.str();
+        std::ostringstream oss;
+        if (abs(powr) < 1000)
+        {
+            oss << powr << " W";
+        }
+        else
+        {
+            double kilowatts = powr / 1000.0;
+            oss << std::fixed << std::setprecision(1) << kilowatts << " kW";
+        }
+        return oss.str();
     }
 
     void updateGrid(int power, bool ongrid)
@@ -476,12 +473,12 @@ public:
         if (ongrid)
         {
             lv_led_set_color(_gridLed, lv_color_hex(0x00FF00)); // Green for online
-            lv_led_on(_gridLed); // Turn the LED on
+            lv_led_on(_gridLed);                                // Turn the LED on
         }
         else
         {
             lv_led_set_color(_gridLed, lv_color_hex(0xFF0000)); // Red for offline
-            lv_led_on(_gridLed); // Turn the LED on
+            lv_led_on(_gridLed);                                // Turn the LED on
         }
 
         // Change the frame color based on power
@@ -543,7 +540,7 @@ public:
         lv_chart_set_point_count(_chart, 24); // 24 hours of data
 
         // Set the Y-axis range
-        lv_chart_set_range(_chart, LV_CHART_AXIS_PRIMARY_Y,10, 10000); // Assuming max value is 12000W
+        lv_chart_set_range(_chart, LV_CHART_AXIS_PRIMARY_Y, 10, 10000); // Assuming max value is 12000W
 
         // Customize the appearance
         lv_obj_set_style_bg_color(_chart, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
@@ -566,6 +563,14 @@ public:
             lv_chart_set_value_by_id(_chart, _chartSeries, i, _dataSets[0].data[i]);
         }
 
+
+        //Maximum info
+        _maxLabel = lv_label_create(lv_obj_get_parent(_chart));
+        lv_label_set_text(_maxLabel, "Max: 0 kW");
+        lv_obj_set_style_text_font(_maxLabel, &lv_font_montserrat_12, 0); 
+
+        lv_obj_set_pos(_maxLabel, lv_obj_get_x(_chart), lv_obj_get_y(_chart) + 10);
+
         // Make the chart clickable
         lv_obj_add_flag(_chart, LV_OBJ_FLAG_CLICKABLE);
 
@@ -577,12 +582,42 @@ public:
         dashboard->onChartClick(); }, LV_EVENT_CLICKED, this);
     }
 
-    // Event handler for chart title click
+    void updateChartRange()
+    {
+        if (!_chart || !_chartSeries)
+        {
+            ESP_LOGE(TAG, "Error: _chart or _chartSeries is null");
+            return;
+        }
+
+        int16_t minValue = INT16_MAX;
+        int16_t maxValue = INT16_MIN;
+
+        for (int i = 0; i < 24; i++)
+        {
+            int value = _dataSets[_currentDataSetIndex].data[i];
+            if (value < minValue)
+                minValue = value;
+            if (value > maxValue)
+                maxValue = value;
+        }
+
+        lv_chart_set_range(_chart, LV_CHART_AXIS_PRIMARY_Y, minValue, maxValue);
+        lv_chart_refresh(_chart);
+
+        if (_maxLabel) {
+            std::string mx = "Max: ";
+            mx += formatPower(maxValue);
+            lv_label_set_text(_maxLabel, mx.c_str());
+        }
+
+        // ESP_LOGI(TAG, "Chart range updated: Min=%d, Max=%d", minValue, maxValue);
+    }
+
     void onChartClick()
     {
         ESP_LOGI(TAG, "onChartClick called");
 
-        // Ensure chart and series are valid
         if (!_chart)
         {
             ESP_LOGE(TAG, "Error: _chart is null");
@@ -595,22 +630,16 @@ public:
             return;
         }
 
-        // Increment the current dataset index
         _currentDataSetIndex = (_currentDataSetIndex + 1) % 2;
-
-        // Update chart title
         lv_label_set_text(_chartTitleLabel, _dataSets[_currentDataSetIndex].description);
-
-        // Update series color
-        ESP_LOGI(TAG, "Setting series color to: 0x%X\n", _dataSets[_currentDataSetIndex].color.full);
         lv_chart_set_series_color(_chart, _chartSeries, _dataSets[_currentDataSetIndex].color);
 
-        // Update chart data
         for (int i = 0; i < 24; i++)
         {
             lv_chart_set_value_by_id(_chart, _chartSeries, i, _dataSets[_currentDataSetIndex].data[i]);
         }
 
+        updateChartRange();
         ESP_LOGI(TAG, "Dataset switched to: %s\n", _dataSets[_currentDataSetIndex].description);
     }
 
@@ -661,7 +690,7 @@ public:
 
     void updateDataSetHour(int datasetIndex, int hour, int newValue)
     {
-        if (datasetIndex < 0 || datasetIndex >= 3)
+        if (datasetIndex < 0 || datasetIndex >= 2)
         {
             ESP_LOGI(TAG, "Invalid dataset index: %d\n", datasetIndex);
             return;
@@ -674,12 +703,11 @@ public:
         }
 
         _dataSets[datasetIndex].data[hour] = newValue;
-        //ESP_LOGI(TAG, "Dataset %d, hour %d updated to %d", datasetIndex, hour, newValue);
 
-        // If the updated dataset is currently displayed, refresh the chart
         if (datasetIndex == _currentDataSetIndex && _chartSeries && _chart)
         {
             lv_chart_set_value_by_id(_chart, _chartSeries, hour, newValue);
+            updateChartRange();
         }
     }
 

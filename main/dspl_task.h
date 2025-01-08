@@ -14,6 +14,7 @@
 #include "connection_manager.h"
 #include "mqtt_queue_data.h"
 #include "shoelace.h"
+#include "sd_card.h"
 
 class DisplayTask : public RPTask
 {
@@ -51,5 +52,6 @@ private:
 	SolaxParameters  _SolaxData;
 	Shoelace		 _consumption;
 	Shoelace         _photovoltaic;
+	SdCard			 _sdcard;
 	
 };
