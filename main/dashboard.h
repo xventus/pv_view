@@ -10,7 +10,7 @@
 #include <string_view>
 #include <iomanip>
 #include <sstream>
-
+#include <numeric>
 #include "esp_log.h"
 #include "display_driver.h"
 #include "icons8_solar_panel_48.h"
@@ -20,6 +20,7 @@
 #include "icons8_generator_32.h"
 #include "icons8_error_30.h"
 #include "icons8_wifi_24.h"
+#include "utils.h"
 
 class Dashboard
 {
@@ -58,6 +59,14 @@ private:
     lv_obj_t *_chartTitleLabel{nullptr}; // For the chart title label
     lv_obj_t *_chart{nullptr};           // For the chart object
     lv_obj_t *_maxLabel{nullptr};        // Maximum value for chart
+    lv_obj_t *_barGraphFrame{nullptr};   //
+
+    lv_obj_t *_totalSolLabel{nullptr};
+    lv_obj_t *_dayConsumpLabel{nullptr};
+    lv_obj_t *_timeLabel{nullptr};
+    lv_obj_t *_dateLabel{nullptr};
+    lv_obj_t *_totalCons{nullptr};
+    lv_obj_t *_totalSol{nullptr};
 
     lv_chart_series_t *_chartSeries{nullptr};
     int _currentDataSetIndex{0};
@@ -88,8 +97,8 @@ private:
     };
 
     ChartDataSet _dataSets[2] = {
-        {"Photovoltaic Yield", lv_color_hex(0xFF4500) , {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-        {"Energy Consumption", lv_color_hex(0x007BFF) , {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}};
+        {"Photovoltaic Yield", lv_color_hex(0xFF4500), {LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE}},
+        {"Energy Consumption", lv_color_hex(0x007BFF), {LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE, LV_CHART_POINT_NONE}}};
 
 public:
     void disableSettingsApButton()
@@ -136,7 +145,7 @@ public:
     {
         const Message msg = {
             &icons8_error_30,
-            "I can't connect to MQTT"};
+            "No MQTT"};
         updateEnergyMessage(msg);
         setEnergyBarMode(EnergyBarMode::MESSAGE);
     }
@@ -151,13 +160,13 @@ public:
         if (!_messageIcon)
         {
             _messageIcon = lv_img_create(_energyBarFrame);
-            lv_obj_align(_messageIcon, LV_ALIGN_LEFT_MID, 10, 0);
+            lv_obj_align(_messageIcon, LV_ALIGN_TOP_MID, 0, 0);
         }
         if (!_messageLabel)
         {
             _messageLabel = lv_label_create(_energyBarFrame);
             lv_obj_set_style_text_font(_messageLabel, &lv_font_montserrat_14, 0);
-            lv_obj_align(_messageLabel, LV_ALIGN_LEFT_MID, 50, 0);
+            lv_obj_align(_messageLabel, LV_ALIGN_BOTTOM_MID, 0, 0);
         }
 
         lv_img_set_src(_messageIcon, message.icon);
@@ -185,7 +194,6 @@ public:
         lv_obj_set_style_bg_opa(_screen, LV_OPA_COVER, 0);             // Full opacity
 
         createFrames();
-        onChartClick();
     }
 
     void createSettingsScreen()
@@ -278,43 +286,60 @@ public:
 
     void createFrames()
     {
+        const int frameSolWidth = 157;   // solar, batt
+        const int frameSolHeight = 120;  // solar, batt
+        const int frameGridWidth = 157;  // grid, home
+        const int frameGridHeight = 100; // grid, home
+        const int distHoziz = 5;
+        const int distVert = 4;
+        const int dist = 2;
+        const int distIcon = 15; // grid, home
+        const int distIconSol = 30;
+        const int energyProgressWidth = 100;
+        const int frameOverHeight = 100;
+
         // Solar Panels
-        _solarPanelFrame = createFrame(152, 120, LV_ALIGN_TOP_LEFT, 5, 5, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
-        _solarPanelTotalPowerLabel = addLabel(_solarPanelFrame, "1000 W", LV_ALIGN_TOP_MID, 0, -5, &lv_font_montserrat_14);
-        addIcon(_solarPanelFrame, &icons8_solar_panel_48, LV_ALIGN_CENTER, 0, 0);
-        _solarPanelString1Label = addLabel(_solarPanelFrame, "520 W", LV_ALIGN_CENTER, -30, 35, &lv_font_montserrat_12);
-        _solarPanelString2Label = addLabel(_solarPanelFrame, "480 W", LV_ALIGN_CENTER, 30, 35, &lv_font_montserrat_12);
+        _solarPanelFrame = createFrame(frameSolWidth, frameSolHeight, LV_ALIGN_TOP_LEFT, dist, dist, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
+        _solarPanelTotalPowerLabel = addLabel(_solarPanelFrame, "1000 W", LV_ALIGN_TOP_MID, 0, -dist, &lv_font_montserrat_16);
+        addIcon(_solarPanelFrame, &icons8_solar_panel_48, LV_ALIGN_CENTER, 0, distIconSol);
+        _solarPanelString1Label = addLabel(_solarPanelFrame, "520 W", LV_ALIGN_CENTER, -30, -10, &lv_font_montserrat_12);
+        _solarPanelString2Label = addLabel(_solarPanelFrame, "480 W", LV_ALIGN_CENTER, 30, -10, &lv_font_montserrat_12);
+        lv_obj_set_scrollbar_mode(_solarPanelFrame, LV_SCROLLBAR_MODE_OFF);
 
         // Battery
-        _batteryFrame = createFrame(152, 120, LV_ALIGN_TOP_RIGHT, -5, 5, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
-        _batteryPercentageLabel = addLabel(_batteryFrame, "80%", LV_ALIGN_TOP_MID, 0, -5, &lv_font_montserrat_14);
-        addIcon(_batteryFrame, &icons8_car_battery_48, LV_ALIGN_CENTER, 0, 0);
-        _batteryPowerLabel = addLabel(_batteryFrame, "500 W", LV_ALIGN_CENTER, -30, 35, &lv_font_montserrat_12);
-        _batteryTempLabel = addTemperatureLabel(_batteryFrame, "35.0 °C", LV_ALIGN_CENTER, 30, 35);
-
-        // Consumption
-        _consumptionFrame = createFrame(85, 110, LV_ALIGN_TOP_RIGHT, -5, 130, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
-        _consumptionLabel = addLabel(_consumptionFrame, "532 W", LV_ALIGN_TOP_MID, 0, -5, &lv_font_montserrat_14);
-        addIcon(_consumptionFrame, &icons8_home_48, LV_ALIGN_CENTER, 0, 0);
+        _batteryFrame = createFrame(frameSolWidth, frameSolHeight, LV_ALIGN_TOP_RIGHT, -dist, dist, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
+        _batteryPercentageLabel = addLabel(_batteryFrame, "80%", LV_ALIGN_TOP_MID, 0, -dist, &lv_font_montserrat_16);
+        addIcon(_batteryFrame, &icons8_car_battery_48, LV_ALIGN_CENTER, 0, distIconSol);
+        _batteryPowerLabel = addLabel(_batteryFrame, "500 W", LV_ALIGN_CENTER, -30, -10, &lv_font_montserrat_12);
+        _batteryTempLabel = addTemperatureLabel(_batteryFrame, "35.0 °C", LV_ALIGN_CENTER, 30, -10);
+        lv_obj_set_scrollbar_mode(_batteryFrame, LV_SCROLLBAR_MODE_OFF);
 
         // grid
-        _gridFrame = createFrame(85, 110, LV_ALIGN_TOP_LEFT, 5, 130, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
-        _gridLabel = addLabel(_gridFrame, "781 W", LV_ALIGN_TOP_MID, 0, -5, &lv_font_montserrat_14);
-        addIcon(_gridFrame, &icons8_telephone_pole_48, LV_ALIGN_CENTER, 0, 0);
+        _gridFrame = createFrame(frameGridWidth, frameGridHeight, LV_ALIGN_TOP_LEFT, dist, frameSolHeight + distVert, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
+        _gridLabel = addLabel(_gridFrame, "781 W", LV_ALIGN_TOP_MID, 0, -dist, &lv_font_montserrat_16);
+        addIcon(_gridFrame, &icons8_telephone_pole_48, LV_ALIGN_CENTER, 0, distIcon);
         _gridLed = lv_led_create(_gridFrame);
         lv_obj_set_size(_gridLed, 5, 5); // Set LED size
         lv_obj_align(_gridLed, LV_ALIGN_BOTTOM_LEFT, 5, -5);
+        lv_obj_set_scrollbar_mode(_gridFrame, LV_SCROLLBAR_MODE_OFF);
+
+        // Consumption - home
+        _consumptionFrame = createFrame(frameGridWidth, frameGridHeight, LV_ALIGN_TOP_RIGHT, -dist, frameSolHeight + distVert, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
+        _consumptionLabel = addLabel(_consumptionFrame, "532 W", LV_ALIGN_TOP_MID, 0, -dist, &lv_font_montserrat_16);
+        addIcon(_consumptionFrame, &icons8_home_48, LV_ALIGN_CENTER, 0, distIcon);
+        lv_obj_set_scrollbar_mode(_consumptionFrame, LV_SCROLLBAR_MODE_OFF);
 
         // Overview
-        _overviewFrame = createFrame(130, 110, LV_ALIGN_TOP_MID, 0, 130, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
-        _overviewPowerLabel = addLabel(_overviewFrame, "3500 W", LV_ALIGN_TOP_MID, 0, -5, &lv_font_montserrat_14);
-        _overviewTempLabel = addTemperatureLabel(_overviewFrame, "50.0 °C", LV_ALIGN_BOTTOM_MID, 0, -5);
+        _overviewFrame = createFrame(frameGridWidth, frameOverHeight, LV_ALIGN_TOP_LEFT, dist, frameSolHeight + distHoziz + dist + frameGridHeight, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
+        _overviewPowerLabel = addLabel(_overviewFrame, "3500 W", LV_ALIGN_TOP_MID, 0, -dist, &lv_font_montserrat_16);
+        _overviewTempLabel = addTemperatureLabel(_overviewFrame, "50.0 °C", LV_ALIGN_BOTTOM_MID, 0, 5);
         addIcon(_overviewFrame, &icons8_generator_32, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_set_scrollbar_mode(_overviewFrame, LV_SCROLLBAR_MODE_OFF);
 
         // Energy Bar
-        _energyBarFrame = createFrame(310, 80, LV_ALIGN_CENTER, 0, 44, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
-        _energyBarLabel = addLabel(_energyBarFrame, "1200 W", LV_ALIGN_TOP_MID, 0, -10, &lv_font_montserrat_14);
-        _energyBar = addBar(_energyBarFrame, 270, 20, LV_ALIGN_BOTTOM_MID, 0, -10);
+        _energyBarFrame = createFrame(frameGridWidth, frameOverHeight, LV_ALIGN_TOP_RIGHT, -dist, frameSolHeight + distHoziz + dist + frameGridHeight, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
+        _energyBarLabel = addLabel(_energyBarFrame, "1200 W", LV_ALIGN_TOP_MID, 0, -dist, &lv_font_montserrat_16);
+        _energyBar = addBar(_energyBarFrame, energyProgressWidth, 20, LV_ALIGN_BOTTOM_MID, 0, -10);
 
         createBarGraph("", lv_color_hex(0x007BFF));
 
@@ -373,11 +398,12 @@ public:
         }
     }
 
-    void addIcon(lv_obj_t *parent, const lv_img_dsc_t *icon, lv_align_t align, int x, int y)
+    lv_obj_t *addIcon(lv_obj_t *parent, const lv_img_dsc_t *icon, lv_align_t align, int x, int y)
     {
         lv_obj_t *img = lv_img_create(parent);
         lv_img_set_src(img, icon);
         lv_obj_align(img, align, x, y);
+        return img;
     }
 
     lv_obj_t *addBar(lv_obj_t *parent, int width, int height, lv_align_t align, int x, int y)
@@ -392,17 +418,13 @@ public:
 
     void updateSolarPanels(int string1Power, int string2Power)
     {
-        char text[20];
+
         int totalPower = string1Power + string2Power;
 
-        sprintf(text, "%d W", totalPower);
-        lv_label_set_text(_solarPanelTotalPowerLabel, text);
+        lv_label_set_text(_solarPanelTotalPowerLabel, Utils::formatPower(totalPower).c_str());
 
-        sprintf(text, "%d W", string1Power);
-        lv_label_set_text(_solarPanelString1Label, text);
-
-        sprintf(text, "%d W", string2Power);
-        lv_label_set_text(_solarPanelString2Label, text);
+        lv_label_set_text(_solarPanelString1Label, Utils::formatPower(string1Power).c_str());
+        lv_label_set_text(_solarPanelString2Label, Utils::formatPower(string2Power).c_str());
 
         if (totalPower > 100)
         {
@@ -422,14 +444,19 @@ public:
         sprintf(text, "%d%%", percentage);
         lv_label_set_text(_batteryPercentageLabel, text);
 
-        lv_label_set_text(_batteryPowerLabel, formatPower(power).c_str());
+        lv_label_set_text(_batteryPowerLabel, Utils::formatPower(power).c_str());
 
         sprintf(text, "%.1f °C", temp);
         lv_label_set_text(_batteryTempLabel, text);
         updateTemperatureTextColor(_batteryTempLabel, temp);
 
         // Change the frame color based on power
-        if (power > 100)
+        if (power == 0)
+        {
+            // Black for zero power
+            lv_obj_set_style_border_color(_batteryFrame, lv_color_hex(0x000000), 0);
+        }
+        else if (power > 100)
         {
             // Dark green for positive power
             lv_obj_set_style_border_color(_batteryFrame, lv_color_hex(0x00EE00), 0);
@@ -439,31 +466,11 @@ public:
             // Dark red for negative power
             lv_obj_set_style_border_color(_batteryFrame, lv_color_hex(0xEE0000), 0);
         }
-        else
-        {
-            // Black for zero power
-            lv_obj_set_style_border_color(_batteryFrame, lv_color_hex(0x000000), 0);
-        }
     }
 
     void updateConsumption(int power)
     {
         updateLabel(_consumptionLabel, power);
-    }
-
-    std::string formatPower(int powr)
-    {
-        std::ostringstream oss;
-        if (abs(powr) < 1000)
-        {
-            oss << powr << " W";
-        }
-        else
-        {
-            double kilowatts = powr / 1000.0;
-            oss << std::fixed << std::setprecision(1) << kilowatts << " kW";
-        }
-        return oss.str();
     }
 
     void updateGrid(int power, bool ongrid)
@@ -522,34 +529,62 @@ public:
         updateLabel(_energyBarLabel, value);
     }
 
+    void graphDisplay(bool hideGraph)
+    {
+        if (hideGraph)
+        {
+            lv_obj_add_flag(_chartTitleLabel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(_chart, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(_maxLabel, LV_OBJ_FLAG_HIDDEN);
+
+            lv_obj_clear_flag(_totalSolLabel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(_dayConsumpLabel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(_timeLabel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(_dateLabel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(_totalSol, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(_totalCons, LV_OBJ_FLAG_HIDDEN);
+        }
+        else
+        {
+            lv_obj_clear_flag(_chartTitleLabel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(_chart, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(_maxLabel, LV_OBJ_FLAG_HIDDEN);
+
+            lv_obj_add_flag(_totalSolLabel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(_dayConsumpLabel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(_timeLabel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(_dateLabel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(_totalSol, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(_totalCons, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
     void createBarGraph(const char *title, lv_color_t barColor)
     {
         // Create a frame for the bar graph
-        lv_obj_t *barGraphFrame = createFrame(310, 140, LV_ALIGN_BOTTOM_MID, 0, -10, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
+        _barGraphFrame = createFrame(315, 148, LV_ALIGN_BOTTOM_MID, 0, -2, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
+        lv_obj_set_scrollbar_mode(_barGraphFrame, LV_SCROLLBAR_MODE_OFF);
 
         // Add a title label to the frame
-        _chartTitleLabel = addLabel(barGraphFrame, title, LV_ALIGN_TOP_MID, 0, -10, &lv_font_montserrat_14);
+        _chartTitleLabel = addLabel(_barGraphFrame, title, LV_ALIGN_TOP_MID, 0, -10, &lv_font_montserrat_14);
 
         // Create the bar graph
-        _chart = lv_chart_create(barGraphFrame);
+        _chart = lv_chart_create(_barGraphFrame);
         lv_obj_set_size(_chart, 260, 80); // Set the size of the bar graph
-        lv_obj_align(_chart, LV_ALIGN_CENTER, 0, 10);
-
-        // Configure the chart as a bar graph
-        lv_chart_set_type(_chart, LV_CHART_TYPE_LINE);
-        lv_chart_set_point_count(_chart, 24); // 24 hours of data
+        lv_obj_align(_chart, LV_ALIGN_CENTER, 0, 20);
 
         // Set the Y-axis range
         lv_chart_set_range(_chart, LV_CHART_AXIS_PRIMARY_Y, 10, 10000); // Assuming max value is 12000W
 
-        // Customize the appearance
-        lv_obj_set_style_bg_color(_chart, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(_chart, LV_OPA_TRANSP, LV_PART_MAIN);
-        lv_obj_set_style_pad_gap(_chart, 0, LV_PART_MAIN); // Set the gap between bars
-        lv_obj_set_style_border_width(_chart, 0, LV_PART_MAIN);
+        // Configure the chart as a bar graph
+        lv_chart_set_type(_chart, LV_CHART_TYPE_BAR);
+        lv_obj_set_style_line_opa(_chart, LV_OPA_TRANSP, LV_PART_ITEMS);
+        lv_obj_set_style_line_width(_chart, 0, LV_PART_ITEMS);
+        lv_obj_set_style_pad_column(_chart, 0, LV_PART_MAIN);              
+        lv_obj_set_style_pad_gap(_chart, 4, LV_PART_MAIN);  
+        lv_chart_set_point_count(_chart, 24); // 24 hours of data
 
-        // Configure horizontal grid lines every 1000W
-        lv_chart_set_div_line_count(_chart, 10, 0); // 10  divisions for 1000W steps (0 to 12000W)
+        lv_chart_set_div_line_count(_chart, 10, 0); 
 
         // Remove vertical grid lines
         lv_obj_set_style_pad_column(_chart, 0, LV_PART_MAIN);
@@ -563,23 +598,41 @@ public:
             lv_chart_set_value_by_id(_chart, _chartSeries, i, _dataSets[0].data[i]);
         }
 
-
-        //Maximum info
+        // Maximum info
         _maxLabel = lv_label_create(lv_obj_get_parent(_chart));
         lv_label_set_text(_maxLabel, "Max: 0 kW");
-        lv_obj_set_style_text_font(_maxLabel, &lv_font_montserrat_12, 0); 
+        lv_obj_set_style_text_font(_maxLabel, &lv_font_montserrat_12, 0);
 
-        lv_obj_set_pos(_maxLabel, lv_obj_get_x(_chart), lv_obj_get_y(_chart) + 10);
+        lv_obj_set_pos(_maxLabel, lv_obj_get_x(_chart), lv_obj_get_y(_chart) + 20);
 
         // Make the chart clickable
         lv_obj_add_flag(_chart, LV_OBJ_FLAG_CLICKABLE);
 
         // Add an event listener for the chart
+        lv_obj_add_event_cb(_barGraphFrame, [](lv_event_t *e)
+                            {
+                Dashboard *dashboard = static_cast<Dashboard *>(lv_event_get_user_data(e));
+                ESP_LOGI(TAG,"Chart clicked");
+        dashboard->onChartClick(); }, LV_EVENT_CLICKED, this);
+
         lv_obj_add_event_cb(_chart, [](lv_event_t *e)
                             {
-        Dashboard *dashboard = static_cast<Dashboard *>(lv_event_get_user_data(e));
-        ESP_LOGI(TAG,"Chart clicked");
+                Dashboard *dashboard = static_cast<Dashboard *>(lv_event_get_user_data(e));
+                ESP_LOGI(TAG,"Chart clicked");
         dashboard->onChartClick(); }, LV_EVENT_CLICKED, this);
+
+        // --------- Create overview
+
+        _totalSolLabel = addLabel(_barGraphFrame, "1000 Wh", LV_ALIGN_TOP_LEFT, 0, 20, &lv_font_montserrat_16);
+        _totalSol = addIcon(_barGraphFrame, &icons8_solar_panel_48, LV_ALIGN_BOTTOM_LEFT, 0, -15);
+
+        _dayConsumpLabel = addLabel(_barGraphFrame, "1000 Wh", LV_ALIGN_TOP_RIGHT, 0, 20, &lv_font_montserrat_16);
+        _totalCons = addIcon(_barGraphFrame, &icons8_home_48, LV_ALIGN_BOTTOM_RIGHT, 0, -15);
+
+        _timeLabel = addLabel(_barGraphFrame, "10:00", LV_ALIGN_CENTER, 0, 0, &lv_font_montserrat_16);
+        _dateLabel = addLabel(_barGraphFrame, "10.10.2025", LV_ALIGN_CENTER, 0, 20, &lv_font_montserrat_16);
+
+        graphDisplay(false);
     }
 
     void updateChartRange()
@@ -590,12 +643,14 @@ public:
             return;
         }
 
-        int16_t minValue = INT16_MAX;
-        int16_t maxValue = INT16_MIN;
+        int minValue = 0;
+        int maxValue = 0;
 
         for (int i = 0; i < 24; i++)
         {
             int value = _dataSets[_currentDataSetIndex].data[i];
+            if (value == LV_CHART_POINT_NONE)
+                continue;
             if (value < minValue)
                 minValue = value;
             if (value > maxValue)
@@ -605,13 +660,39 @@ public:
         lv_chart_set_range(_chart, LV_CHART_AXIS_PRIMARY_Y, minValue, maxValue);
         lv_chart_refresh(_chart);
 
-        if (_maxLabel) {
+        if (_maxLabel)
+        {
             std::string mx = "Max: ";
-            mx += formatPower(maxValue);
+            if (maxValue == INT16_MIN || minValue == INT16_MAX)
+                _maxLabel = 0;
+            mx += Utils::formatPower(maxValue, "W", "h");
             lv_label_set_text(_maxLabel, mx.c_str());
         }
 
-        // ESP_LOGI(TAG, "Chart range updated: Min=%d, Max=%d", minValue, maxValue);
+       //ESP_LOGI(TAG, "Chart range updated: Min=%d, Max=%d", minValue, maxValue);
+       //ESP_LOGI(TAG, "Chart range index: %d\n", _currentDataSetIndex);
+    }
+
+    void updateChart()
+    {
+        if (_currentDataSetIndex == 2)
+        {
+            graphDisplay(true);
+        }
+        else
+        {
+            graphDisplay(false);
+            lv_label_set_text(_chartTitleLabel, _dataSets[_currentDataSetIndex].description);
+            lv_chart_set_series_color(_chart, _chartSeries, _dataSets[_currentDataSetIndex].color);
+
+            for (int i = 0; i < 24; i++)
+            {
+                lv_chart_set_value_by_id(_chart, _chartSeries, i, _dataSets[_currentDataSetIndex].data[i]);
+            }
+
+            updateChartRange();
+            //ESP_LOGI(TAG, "Dataset switched to: %s\n", _dataSets[_currentDataSetIndex].description);
+        }
     }
 
     void onChartClick()
@@ -630,17 +711,10 @@ public:
             return;
         }
 
-        _currentDataSetIndex = (_currentDataSetIndex + 1) % 2;
-        lv_label_set_text(_chartTitleLabel, _dataSets[_currentDataSetIndex].description);
-        lv_chart_set_series_color(_chart, _chartSeries, _dataSets[_currentDataSetIndex].color);
+        _currentDataSetIndex = (_currentDataSetIndex + 1) % 3;
+        updateChart();
 
-        for (int i = 0; i < 24; i++)
-        {
-            lv_chart_set_value_by_id(_chart, _chartSeries, i, _dataSets[_currentDataSetIndex].data[i]);
-        }
-
-        updateChartRange();
-        ESP_LOGI(TAG, "Dataset switched to: %s\n", _dataSets[_currentDataSetIndex].description);
+        ESP_LOGI(TAG, "onChartClick: %d\n", _currentDataSetIndex);
     }
 
     void clearAllDataSets()
@@ -649,7 +723,7 @@ public:
         {
             for (int hour = 0; hour < 24; hour++)
             {
-                _dataSets[datasetIndex].data[hour] = 0;
+                _dataSets[datasetIndex].data[hour] = LV_CHART_POINT_NONE;
             }
         }
         ESP_LOGI(TAG, "All data sets cleared\n");
@@ -659,32 +733,11 @@ public:
         {
             for (int i = 0; i < 24; i++)
             {
-                lv_chart_set_value_by_id(_chart, _chartSeries, i, 0);
+                lv_chart_set_value_by_id(_chart, _chartSeries, i, LV_CHART_POINT_NONE);
             }
-        }
-    }
 
-    void updateDataSet(int datasetIndex, const int newData[24])
-    {
-        if (datasetIndex < 0 || datasetIndex >= 3)
-        {
-            ESP_LOGI(TAG, "Invalid dataset index: %d\n", datasetIndex);
-            return;
-        }
-
-        for (int i = 0; i < 24; i++)
-        {
-            _dataSets[datasetIndex].data[i] = newData[i];
-        }
-        ESP_LOGI(TAG, "Dataset %d updated\n", datasetIndex);
-
-        // If the updated dataset is currently displayed, refresh the chart
-        if (datasetIndex == _currentDataSetIndex && _chartSeries && _chart)
-        {
-            for (int i = 0; i < 24; i++)
-            {
-                lv_chart_set_value_by_id(_chart, _chartSeries, i, newData[i]);
-            }
+            updateChart();
+            updateChartRange();
         }
     }
 
@@ -702,13 +755,20 @@ public:
             return;
         }
 
-        _dataSets[datasetIndex].data[hour] = newValue;
+        _dataSets[datasetIndex].data[hour] = (newValue == 0) ? LV_CHART_POINT_NONE : newValue;
 
         if (datasetIndex == _currentDataSetIndex && _chartSeries && _chart)
         {
             lv_chart_set_value_by_id(_chart, _chartSeries, hour, newValue);
-            updateChartRange();
+
+            for (int i = hour; i < 24; i++)
+            {
+                lv_chart_set_value_by_id(_chart, _chartSeries, i, LV_CHART_POINT_NONE);
+            }
         }
+
+        updateChart();
+        updateChartRange();
     }
 
     void updateSettingsTextArea(std::string_view newLine)
@@ -740,10 +800,33 @@ public:
         lv_textarea_set_text(_settingsTextArea, currentContent.c_str());
     }
 
+    void updateDateTime(std::string_view date, std::string_view time)
+    {
+
+        if (!_timeLabel || !_dateLabel || !lv_obj_is_valid(_timeLabel) || !lv_obj_is_valid(_dateLabel))
+        {
+            ESP_LOGE(TAG, "Labels _timeLabel or _dateLabel are not valid.");
+            return;
+        }
+
+        if (_timeLabel && !time.empty())
+            lv_label_set_text(_timeLabel, time.data());
+        if (_dateLabel && !date.empty())
+            lv_label_set_text(_dateLabel, date.data());
+    }
+
+    void updateTotal(int sol, int cons)
+    {
+        if (_totalSolLabel)
+            lv_label_set_text(_totalSolLabel, Utils::formatPower(sol, "W", "h").c_str());
+        if (_dayConsumpLabel)
+            lv_label_set_text(_dayConsumpLabel, Utils::formatPower(cons, "W", "h").c_str());
+    }
+
 private:
     void updateLabel(lv_obj_t *label, int value)
     {
-        lv_label_set_text(label, formatPower(value).c_str());
+        lv_label_set_text(label, Utils::formatPower(value).c_str());
     }
 
     void showEnergyBar()

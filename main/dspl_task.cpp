@@ -43,18 +43,20 @@ void DisplayTask::loop()
     bool mountOK = false;
     bool loadAfterReset = true;
     int lastMin = 0;
-  
-    mountOK = (_sdcard.mount(true) == ESP_OK);
-    if (!mountOK) ESP_LOGE(TAG, "SD card mount failed - memory mode");
-    else  ESP_LOGW(TAG, "SD card mode active");
+    bool firstCheck = true;
 
-     
+    mountOK = (_sdcard.mount(true) == ESP_OK);
+    if (!mountOK)
+        ESP_LOGE(TAG, "SD card mount failed - memory mode");
+    else
+        ESP_LOGW(TAG, "SD card mode active");
+
     // display adjust & show initial screen
     _dd.rotation(LV_DISP_ROT_NONE);
     _dd.lock();
     _dashboard.createScreen(nullptr);
     _dashboard.createSettingsScreen(); // for diagnostic messages
-                                       // _dashboard.clearAllDataSets();
+    _dashboard.clearAllDataSets();
 
     // calback for creating AP
     _dashboard.registerApSettingCallback([this]()
@@ -65,7 +67,6 @@ void DisplayTask::loop()
 
     _dd.unlock();
     _dd.setBrightness(100);
-
     bool lastMqtt = false;
     bool lastConnection = _connectionManager ? _connectionManager->isConnected() : false;
     Application::getInstance()->signalTaskStart(Application::TaskBit::Display);
@@ -102,13 +103,16 @@ void DisplayTask::loop()
             _dashboard.updateOverview(inverterTotal, _SolaxData.Temperature);
             _dashboard.updateEnergyBar(freeEnergy);
 
-            // ---> valid time 
+            auto [dt, tm] = Utils::getDateTime();
+            ESP_LOGI(TAG, "Utils::getDateTime %s %s", dt.c_str(), tm.c_str());
+            _dashboard.updateDateTime(dt, tm);
+            // ---> valid time
             if (_connectionManager && _connectionManager->isTimeActive())
             {
-
                 auto [hour, min, sec] = Utils::getTime();
-                if (hour == 0 && min == 0 && lastMin != min) 
-                { // Day reset, 
+
+                if (hour == 0 && min == 0 && lastMin != min)
+                { // Day reset,
                     lastMin = min;
                     _consumption.resetDailyConsumption();
                     _photovoltaic.resetDailyConsumption();
@@ -116,43 +120,52 @@ void DisplayTask::loop()
                     _sdcard.deleteFile(filename);
                     filename += ".pv";
                     _sdcard.deleteFile(filename);
-                } else { 
+                    _dashboard.clearAllDataSets();
+                }
+                else
+                {
 
-                    if (mountOK && loadAfterReset) 
+                    if (mountOK && loadAfterReset)
                     {
-                       loadAfterReset = false;
+                        loadAfterReset = false;
                         auto filename = "/" + Utils::getDayFileName();
                         _consumption.load(_sdcard.readFile(filename));
                         filename += ".pv";
                         _photovoltaic.load(_sdcard.readFile(filename));
 
-                        _consumption.updateChart([this](int hour, float consumption) { _dashboard.updateDataSetHour(1,hour, consumption);});
-                        _photovoltaic.updateChart([this](int hour, float consumption) { _dashboard.updateDataSetHour(0,hour, consumption);});
-                       
-                    } 
+                        _consumption.updateChart([this](int hour, float consumption)
+                                                 { _dashboard.updateDataSetHour(1, hour, consumption); });
+                        _photovoltaic.updateChart([this](int hour, float consumption)
+                                                  { _dashboard.updateDataSetHour(0, hour, consumption); });
+                    }
 
                     _consumption.update(consumption);
                     _photovoltaic.update(photovoltaic);
 
+                    //ESP_LOGI(TAG, "Total %ld  Sol %ld", (int32_t)_photovoltaic.getSum(), (int32_t)_consumption.getSum());
+                    _dashboard.updateTotal((_SolaxData.Etoday_togrid/10)*1000 /* _photovoltaic.getSum()*/, (int)_consumption.getSum());
                     _dashboard.updateDataSetHour(1, hour, _consumption.getConsumptionForHour(hour));
                     _dashboard.updateDataSetHour(0, hour, _photovoltaic.getConsumptionForHour(hour));
 
-                    //if (sec == 0 || sec == 20 || sec == 40)
-                    ESP_LOGI(TAG, "TIME %d %d %d", hour, min, sec );
+                    // if (sec == 0 || sec == 20 || sec == 40)
+                    ESP_LOGI(TAG, "TIME %d %d %d", hour, min, sec);
 
-                    if (mountOK && (min % 5 == 0) &&  (lastMin != min)) {
+                    if (mountOK && (min % 5 == 0) && (lastMin != min))
+                    {
                         lastMin = min;
                         auto filename = "/" + Utils::getDayFileName();
-                        if (_sdcard.writeFile(filename, _consumption.save())) {
-                            ESP_LOGI(TAG, "File written successfully %s", filename.c_str() );
+                        if (_sdcard.writeFile(filename, _consumption.save()))
+                        {
+                            ESP_LOGI(TAG, "File written successfully %s", filename.c_str());
                         }
                         filename += ".pv";
-                        if (_sdcard.writeFile(filename, _photovoltaic.save())) {
-                             ESP_LOGI(TAG, "File written successfully %s", filename.c_str() );
+                        if (_sdcard.writeFile(filename, _photovoltaic.save()))
+                        {
+                            ESP_LOGI(TAG, "File written successfully %s", filename.c_str());
                         }
                     }
                 }
-                
+
             } // <--- valid time
 
             _dd.unlock();
@@ -162,8 +175,9 @@ void DisplayTask::loop()
         if (_connectionManager)
         {
             bool currentConnection = _connectionManager->isConnected();
-            if (lastConnection != currentConnection)
+            if (lastConnection != currentConnection || firstCheck)
             {
+                firstCheck = false;
                 lastConnection = currentConnection;
                 _dd.lock();
                 ESP_LOGI(TAG, "Connection changed: Wifi %s", lastConnection ? "CONNECTED" : "DISCONNECTED");

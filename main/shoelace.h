@@ -31,6 +31,11 @@ public:
         resetDailyConsumption();
     }
 
+    float getSum()
+    {
+        return std::accumulate(hourlyConsumption.begin(), hourlyConsumption.end(), 0.0f);
+    }
+
     void update(float currentPower) 
     {
         time_t now = time(NULL); 

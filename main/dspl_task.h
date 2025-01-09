@@ -20,6 +20,7 @@ class DisplayTask : public RPTask
 {
 public:
 
+
 	enum class Contnet {
 		NoWifi,			// error mesage - wifi
 		NoMqtt, 		// error message - mqtt

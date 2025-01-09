@@ -37,7 +37,7 @@ void TimeTask::initializeSNTP()
 }
 
 void TimeTask::updateTimeZone()
-{
+{ 
   setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
   tzset();
   ESP_LOGI(LOG_TAG, "Time zone set to CET with daylight saving.");

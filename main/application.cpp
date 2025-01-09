@@ -80,7 +80,7 @@ void Application::run()
         if (!_resetTask.init(literals::tsk_rst, tskIDLE_PRIORITY + 1ul, 4096))
             break;
 
-        if (!_dsplTask.init(_connectionManager, literals::tsk_dspl, tskIDLE_PRIORITY + 1ul, 4096))
+        if (!_dsplTask.init(_connectionManager, literals::tsk_dspl, tskIDLE_PRIORITY + 1ul, 2*4096))
             break;
 
         if (!_mqttTask.init(_connectionManager, literals::tsk_mqtt, tskIDLE_PRIORITY + 1ul, 4096))
