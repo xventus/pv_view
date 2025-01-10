@@ -126,4 +126,13 @@ public:
         return oss.str();
     }
 
+
+static std::string toHexString(const std::string &input) {
+    std::ostringstream hexStream;
+    for (unsigned char c : input) {
+        hexStream << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c);
+    }
+    return hexStream.str();
+}
+
 };

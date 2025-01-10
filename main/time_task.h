@@ -21,7 +21,7 @@ public:
 	bool init(std::shared_ptr<ConnectionManager> connMgr, const char *name, UBaseType_t priority, const configSTACK_DEPTH_TYPE stackDepth);
 private:
 	void initializeSNTP();
-	void updateTimeZone();
+	void updateTimeZone(const char* tmz);
 	bool syncTime();
 protected:
 	void loop() override;
@@ -29,5 +29,6 @@ protected:
 private:
 	static constexpr const char *LOG_TAG = "TIME";
 	std::shared_ptr<ConnectionManager> _connectionManager;
+	std::string _timeserver;
 
 };

@@ -430,13 +430,13 @@ public:
         {
             lv_led_set_color(_hdoLed, lv_color_hex(0x00FF00)); // Green for online
             lv_led_on(_hdoLed);                                // Turn the LED on
-            lv_obj_add_flag(_hdoLed, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(_hdoLed, LV_OBJ_FLAG_HIDDEN);
         }
         else
         {
             lv_led_set_color(_hdoLed, lv_color_hex(0x00FF00)); 
             lv_led_off(_hdoLed);                                // Turn the LED OFF
-            lv_obj_clear_flag(_hdoLed, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(_hdoLed, LV_OBJ_FLAG_HIDDEN);
         }
     }
 

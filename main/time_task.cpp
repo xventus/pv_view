@@ -28,19 +28,27 @@ TimeTask::~TimeTask()
   done();
 }
 
+
 void TimeTask::initializeSNTP()
 {
+  KeyVal &kv = KeyVal::getInstance();
+	_timeserver = kv.readString(literals::kv_timeserver, literals::kv_def_timeserver);
+
   sntp_setoperatingmode(SNTP_OPMODE_POLL);
-  sntp_setservername(0, "cz.pool.ntp.org"); 
+  sntp_setservername(0,  _timeserver.c_str()); 
   sntp_init();
-  ESP_LOGI(LOG_TAG, "SNTP initialized. Time synchronization started.");
+  ESP_LOGI(LOG_TAG, "SNTP initialized. Time synchronization started. [%s]", _timeserver.c_str());
 }
 
-void TimeTask::updateTimeZone()
+void TimeTask::updateTimeZone(const char* tmz)
 { 
-  setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
-  tzset();
-  ESP_LOGI(LOG_TAG, "Time zone set to CET with daylight saving.");
+  if (tmz) {
+    setenv("TZ", tmz, 1);
+    tzset();
+    ESP_LOGI(LOG_TAG, "Time zone set to CET with daylight saving. [%s]", tmz);
+  } else {
+    ESP_LOGE(LOG_TAG, "Time zone - null");
+  }
 }
 
 bool  TimeTask::syncTime()
@@ -62,8 +70,11 @@ bool  TimeTask::syncTime()
   {
     time_t now = time(NULL);
     struct tm timeinfo;
+    KeyVal &kv = KeyVal::getInstance();
+    const auto zone = kv.readString(literals::kv_timezone, literals::kv_def_timezone);
+    updateTimeZone(zone.c_str());
     localtime_r(&now, &timeinfo);
-    ESP_LOGW(LOG_TAG, "Time synchronized: %s status=%d", asctime(&timeinfo),status);
+    ESP_LOGW(LOG_TAG, "Time synchronized: %s status=%d   zone [%s]", asctime(&timeinfo),status, zone.c_str());
     Application::getInstance()->getDisplayTask()->settingMsg(asctime(&timeinfo));
     if (_connectionManager)  _connectionManager->setTimeActive();
     rc = true;
@@ -101,6 +112,7 @@ void TimeTask::loop()
                 if (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET) 
                 {
                     initializeSNTP(); // Initialize SNTP only if it hasn't been started
+                    vTaskDelay(pdMS_TO_TICKS(1000));
                 }
                 initialSyncDone = true;
             }

@@ -184,8 +184,8 @@ void WebTask::loop()
 					kv.writeString(literals::kv_passwdbr, Utils::urlDecode(HttpReqest::getValue(formData, literals::kv_passwdbr)).c_str());
 					kv.writeString(literals::kv_topic, Utils::urlDecode(HttpReqest::getValue(formData, literals::kv_topic)).c_str());
 
-					kv.writeString(literals::kv_timezone, Utils::urlDecode(HttpReqest::getValue(formData, literals::kv_topic)).c_str());
-					kv.writeString(literals::kv_timeserver, Utils::urlDecode(HttpReqest::getValue(formData, literals::kv_topic)).c_str());
+					kv.writeString(literals::kv_timezone, Utils::urlDecode(HttpReqest::getValue(formData, literals::kv_timezone)).c_str());
+					kv.writeString(literals::kv_timeserver, Utils::urlDecode(HttpReqest::getValue(formData, literals::kv_timeserver)).c_str());
 									
 					// Response
 					auto respContnetDialog = std::make_unique<ConentFile>(literals::kv_fl_finish);	
