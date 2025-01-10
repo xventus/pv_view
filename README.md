@@ -52,7 +52,7 @@ Note: The SD card is used to store daily statistics during power failure. If the
 
 ## TODO
 
-- Fix ResetTask - when a reboot is requested, the bar crashes and then restarts.
+- Fix ResetTask - when a reboot is requested, the task crashes and then restarts.
 - Fix unsubscribe call when connection is lost.
 -   
 
