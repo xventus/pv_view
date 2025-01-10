@@ -33,4 +33,5 @@ struct SolaxParameters {
     int32_t BDCStatus{0};
     int32_t GridStatus{0};
     int32_t MPPTCount{0};
+    int32_t Hdo{0};
 };

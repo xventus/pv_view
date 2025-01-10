@@ -128,9 +128,9 @@ void MqttTask::loop()
 
         if (_connectionManager && !_connectionManager->isMqttActive() && subscribe)
         {
-            ESP_LOGI(LOG_TAG, "Topic remove [%s]", topic.c_str());
-            _mqttClient->unsubscribe(topic);
-            subscribe = false;
+            //ESP_LOGI(LOG_TAG, "Topic remove [%s]", topic.c_str());
+            //_mqttClient->unsubscribe(topic);
+            //subscribe = false;
         }
 
 

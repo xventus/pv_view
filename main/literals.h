@@ -41,12 +41,16 @@ public:
     static constexpr const char *kv_user{"user"};
     static constexpr const char *kv_passwdbr{"passbr"};
     static constexpr const char *kv_topic{"topic"};
+    static constexpr const char *kv_timezone{"timezone"};
+    static constexpr const char *kv_timeserver{"timeserver"};
     
     // spiffs filenames
     static constexpr const char *kv_fl_ap{"/spiffs/ap.html"};
     static constexpr const char *kv_fl_style{"/spiffs/style.css"}; 
     static constexpr const char *kv_fl_finish{"/spiffs/finish.html"};
     
-
+    // time 
+    static constexpr const char *kv_def_timezone{"CET-1CEST,M3.5.0,M10.5.0/3"};
+    static constexpr const char *kv_def_timeserver{"cz.pool.ntp.org"};
 
 };

@@ -85,12 +85,11 @@ void DisplayTask::loop()
                 _dd.unlock();
             }
         }
-
         if (xQueueReceive(_queueData, &_SolaxData, 0) == pdTRUE)
         {
             // update UI data
             _dd.lock();
-
+            _dashboard.hdoUpdate(_SolaxData.Hdo);
             _dashboard.updateSolarPanels(_SolaxData.Powerdc1, _SolaxData.Powerdc2);
             _dashboard.updateBattery(_SolaxData.BattCap, _SolaxData.Batpower_Charge1, _SolaxData.TemperatureBat);
             auto inverterTotal = _SolaxData.GridPower_R + _SolaxData.GridPower_S + _SolaxData.GridPower_T;

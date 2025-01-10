@@ -42,6 +42,7 @@ private:
     lv_obj_t *_overviewFrame{nullptr};
     lv_obj_t *_energyBarFrame{nullptr};
 
+    lv_obj_t *_hdoLed{nullptr};
     lv_obj_t *_gridLed{nullptr};
     lv_obj_t *_solarPanelTotalPowerLabel{nullptr};
     lv_obj_t *_solarPanelString1Label{nullptr};
@@ -340,6 +341,12 @@ public:
         _energyBarFrame = createFrame(frameGridWidth, frameOverHeight, LV_ALIGN_TOP_RIGHT, -dist, frameSolHeight + distHoziz + dist + frameGridHeight, lv_color_hex(0x000000), lv_color_hex(0xFFFFFF));
         _energyBarLabel = addLabel(_energyBarFrame, "1200 W", LV_ALIGN_TOP_MID, 0, -dist, &lv_font_montserrat_16);
         _energyBar = addBar(_energyBarFrame, energyProgressWidth, 20, LV_ALIGN_BOTTOM_MID, 0, -10);
+        lv_obj_set_scrollbar_mode(_energyBarFrame, LV_SCROLLBAR_MODE_OFF);
+        _hdoLed = lv_led_create(_energyBarFrame);
+        lv_obj_set_size(_hdoLed, 5, 5); // Set LED size
+        lv_obj_align(_hdoLed, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+        lv_led_set_color(_hdoLed, lv_color_hex(0x00FF00));
+        
 
         createBarGraph("", lv_color_hex(0x007BFF));
 
@@ -416,6 +423,23 @@ public:
         return bar;
     }
 
+    void hdoUpdate(int hdo)
+    {
+        ESP_LOGI(TAG, "HDO: %d", hdo);
+        if (hdo)
+        {
+            lv_led_set_color(_hdoLed, lv_color_hex(0x00FF00)); // Green for online
+            lv_led_on(_hdoLed);                                // Turn the LED on
+            lv_obj_add_flag(_hdoLed, LV_OBJ_FLAG_HIDDEN);
+        }
+        else
+        {
+            lv_led_set_color(_hdoLed, lv_color_hex(0x00FF00)); 
+            lv_led_off(_hdoLed);                                // Turn the LED OFF
+            lv_obj_clear_flag(_hdoLed, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
     void updateSolarPanels(int string1Power, int string2Power)
     {
 
@@ -472,6 +496,7 @@ public:
     {
         updateLabel(_consumptionLabel, power);
     }
+
 
     void updateGrid(int power, bool ongrid)
     {

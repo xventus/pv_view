@@ -101,6 +101,10 @@ public:
         {
             params.MPPTCount = value;
         }
+        else if (key == "HDO")
+        {
+            params.Hdo = value;
+        }
         else
         {
             ESP_LOGW("SolaxParameters", "Unknown key: %s", key.c_str());

@@ -132,6 +132,8 @@ void WebTask::loop()
 					replaceAll(contnetb, "%BROKER_USER%", kv.readString(literals::kv_user,""));
 					replaceAll(contnetb, "%BROKER_PASSWD%", kv.readString(literals::kv_passwdbr,""));
 					replaceAll(contnetb, "%TOPIC%", kv.readString(literals::kv_topic,"solax/data"));
+					replaceAll(contnetb, "%TIMEZONE%", kv.readString(literals::kv_timezone,literals::kv_def_timezone));
+					replaceAll(contnetb, "%TIMESERVER%", kv.readString(literals::kv_timeserver,literals::kv_def_timeserver));
 
  					httpd_resp_send(req, contnetb.c_str(), contnetb.length());
 
@@ -181,6 +183,9 @@ void WebTask::loop()
 					kv.writeString(literals::kv_user, Utils::urlDecode(HttpReqest::getValue(formData, literals::kv_user)).c_str());
 					kv.writeString(literals::kv_passwdbr, Utils::urlDecode(HttpReqest::getValue(formData, literals::kv_passwdbr)).c_str());
 					kv.writeString(literals::kv_topic, Utils::urlDecode(HttpReqest::getValue(formData, literals::kv_topic)).c_str());
+
+					kv.writeString(literals::kv_timezone, Utils::urlDecode(HttpReqest::getValue(formData, literals::kv_topic)).c_str());
+					kv.writeString(literals::kv_timeserver, Utils::urlDecode(HttpReqest::getValue(formData, literals::kv_topic)).c_str());
 									
 					// Response
 					auto respContnetDialog = std::make_unique<ConentFile>(literals::kv_fl_finish);	
