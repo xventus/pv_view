@@ -24,6 +24,8 @@ By clicking on the graph you can switch between the display of energy consumptio
 Most PV system graphs show the current performance per case. This shows the energy produced/consumed in time per hour. Useful for a quick understanding of how much energy has been produced and consumed during each hour of the day.
 Provides information on overall daily trends, which is useful for planning and optimization.
 
+Note: In the graph the information about "Max" indicates the maximum energy consumption/production during the day (Wh). The sum of all energies is in the text part.
+
 <table>
     <tr>
         <td><img src="image/tr1.jpg" alt="case" width="300"></td>
@@ -40,11 +42,19 @@ Provides information on overall daily trends, which is useful for planning and o
 
 Configuration is done via the web browser and connection to the Access Point, which is activated after clicking on the AP button. Click on the engine icon (on the left side) to display the AP launch screen through which you can configure the view. Connect to the AP and connect to 192.168.4.1 in the browser to perform the configuration. Configure your site's AP access and IP address and the MQTT topic that provides the data.
 
+Note: The SD card is used to store daily statistics during power failure. If the SD card is not inserted, the statistics are stored only in RAM. 
+
 <table>
     <tr>
         <td><img src="image/pv5.jpg" alt="case" width="300"></td>
      </tr>
 </table>
+
+## TODO
+
+- Fix ResetTask - when a reboot is requested, the task crashes and then restarts.
+- Fix unsubscribe call when connection is lost.
+-   
 
 
 
