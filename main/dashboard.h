@@ -744,7 +744,7 @@ public:
 
     void clearAllDataSets()
     {
-        for (int datasetIndex = 0; datasetIndex < 3; datasetIndex++)
+        for (int datasetIndex = 0; datasetIndex < 2; datasetIndex++)
         {
             for (int hour = 0; hour < 24; hour++)
             {
